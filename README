@@ -1,17 +1,11 @@
-NAME
-    DBIx::Skinny::Row::Extended -
+  SYNOPSIS
+        package  YourProj::Skinny;
+        use DBIx::Skinny;
+        use DBIx::Mixin modules => [qw(Pager SearchWithPager)]; # 依�してるので必要です
 
-SYNOPSIS
-      use DBIx::Skinny::Row::Extended;
+        package YourProj::Skinny::Row;
+        use base qw(MF::DBIx::Skinny::Row::Extended);
+        use YourProj::Container;
 
-DESCRIPTION
-    DBIx::Skinny::Row::Extended is
-
-AUTHOR
-    Keiji Yoshimi <walf443 at gmail dot com>
-
-SEE ALSO
-LICENSE
-    This library is free software; you can redistribute it and/or modify it
-    under the same terms as Perl itself.
+        sub app_container { YourProj::Container->instance }
 
