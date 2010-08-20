@@ -174,8 +174,11 @@ sub search_with_cache {
     $cond->{select} = ['id'];
     my ( $iter, $pager ) = $class->search($where, $cond);
     my @ids = [ map { $_->id } $iter->all ];
-    my $result_of = $class->fetch_multi_by_id(id => \@ids);
-    return (@ids, $result_of, $pager);
+    if ( @ids ) {
+        my $result_of = $class->fetch_multi_by_id(id => \@ids);
+        return (\@ids, $result_of, $pager);
+    }
+    return (\@ids, {}, $pager);
 }
 
 1;
