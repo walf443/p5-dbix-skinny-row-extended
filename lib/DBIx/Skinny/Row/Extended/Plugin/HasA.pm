@@ -30,7 +30,12 @@ sub mk_has_a_accessor {
                 return $self->{"__$method_name"};
             } else {
                 return $self->{"__$method_name"} = do {
-                    $row_class->single({ id => $self->$colname });
+                    if ( $row_class->can('fetch_multi_by_id') ) {
+                        my $row_class_id = $self->$colname;
+                        return $row_class->fetch_multi_by_id({ id => [ $row_class_id] })->{$row_class_id};
+                    } else {
+                        return $row_class->single({ id => $self->$colname });
+                    }
                 };
             }
         }
