@@ -129,7 +129,8 @@ sub fetch_multi_by_unique_key {
         }
     }
 
-    my $data_of = $class->fetch_multi_by_id(id => [ values %{ $cache_result } ]);
+    my @ids = values %{ $cache_result };
+    my $data_of = @ids ? $class->fetch_multi_by_id(id => [ @ids ]) : {};
     my $result_of = {};
     for my $pk ( keys %{ $data_of } ) {
         my $row = $data_of->{$pk};
