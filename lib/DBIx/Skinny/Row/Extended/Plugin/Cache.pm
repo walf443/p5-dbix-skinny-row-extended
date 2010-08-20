@@ -163,7 +163,9 @@ sub delete_cache {
     my $cache_key_manager = $self->app_container->get('cache_key');
     my $cache = $self->app_container->get('cache');
 
-    $cache->delete($self->cache_key($self->id, $self->table_name));
+    my $cache_key = $self->cache_key($self->id, $self->table_name);
+    $cache->delete($cache_key);
+    $self->app_container->get('db_master')->profiler->record_query("CACHE DELETE FOR $cache_key");
 }
 
 sub search_with_cache {
