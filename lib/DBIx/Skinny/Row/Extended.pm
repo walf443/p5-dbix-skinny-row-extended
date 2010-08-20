@@ -11,7 +11,7 @@ sub table_name {
     if ( ref $class ) {
         $class = ref $class;
     }
-    my $pkg = __PACKAGE__;
+    my $pkg = $class->base_namespace;
     if ( $class =~ m/$pkg\::([^:]+)/ ) {
         my $klass = $1;
         $klass =~ s/::.+$//; # Proj::DB::Row::User::Activeとかのため
@@ -24,6 +24,10 @@ sub table_name {
         }
         return $result;
     }
+}
+
+sub base_namespace {
+    die 'please override';
 }
 
 sub default_pager_logic { 'PlusOne' }
@@ -69,7 +73,7 @@ sub search {
     if ( $related_row_class) {
         my $klass_name_of = {};
         for my $klass_name ( keys %{ $related_row_class } ) {
-            my $row_class = __PACKAGE__ . "::" . $klass_name;
+            my $row_class = $class->base_namespace . "::" . $klass_name;
             $klass_name_of->{$row_class} = [];
         }
         while ( my $row = $iter->next ) {

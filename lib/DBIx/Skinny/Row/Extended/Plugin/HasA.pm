@@ -15,8 +15,7 @@ sub import {
 sub mk_has_a_accessor {
     my ($class, $colname, $row_class) = @_;
 
-    $class =~ m/^(.+::Row)::(.+)$/;
-    $row_class = $1 . $row_class;
+    $row_class = $class->base_namespace . "::" . $row_class;
     $row_class->use
         or die $@;
     my $method_name = $row_class->table_name;
