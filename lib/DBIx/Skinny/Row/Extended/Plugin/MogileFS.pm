@@ -18,7 +18,7 @@ sub import {
     if ( $pkg->can('add_trigger') ) {
         $pkg->add_trigger('BEFORE_DELETE', sub {
             my ($self, ) = @_;
-            $self->delete_mogile;
+            $self->delete_mogile_related;
         });
     }
 }
