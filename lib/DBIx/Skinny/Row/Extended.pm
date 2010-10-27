@@ -255,7 +255,7 @@ __END__
     use DBIx::Mixin modules => [qw(Pager SearchWithPager)]; # 依存してるので必要です
 
     package YourProj::Skinny::Row;
-    use base qw(MF::DBIx::Skinny::Row::Extended);
+    use base qw(DBIx::Skinny::Row::Extended);
     use YourProj::Container;
 
     sub app_container { YourProj::Container->instance }
