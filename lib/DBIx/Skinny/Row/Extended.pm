@@ -252,7 +252,7 @@ __END__
 
     package  YourProj::Skinny;
     use DBIx::Skinny;
-    use DBIx::Mixin modules => [qw(Pager SearchWithPager)]; # 依存してるので必要です
+    use DBIx::Mixin modules => [qw(Pager SearchWithPager)]; # required.
 
     package YourProj::Skinny::Row;
     use base qw(DBIx::Skinny::Row::Extended);

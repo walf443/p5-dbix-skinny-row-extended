@@ -1,10 +1,10 @@
   SYNOPSIS
         package  YourProj::Skinny;
         use DBIx::Skinny;
-        use DBIx::Mixin modules => [qw(Pager SearchWithPager)]; # 依�してるので必要です
+        use DBIx::Mixin modules => [qw(Pager SearchWithPager)]; # required.
 
         package YourProj::Skinny::Row;
-        use base qw(MF::DBIx::Skinny::Row::Extended);
+        use base qw(DBIx::Skinny::Row::Extended);
         use YourProj::Container;
 
         sub app_container { YourProj::Container->instance }
