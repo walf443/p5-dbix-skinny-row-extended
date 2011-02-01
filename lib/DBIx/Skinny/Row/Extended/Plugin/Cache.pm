@@ -78,9 +78,16 @@ sub fetch_multi_by_id {
         $cache_key_of->{$key} = $id;
     }
     my $cache_result = $cache->get_multi(keys %{ $cache_key_of });
+    my $db = $class->get_db(
+        {
+            write      => 1,
+            conditions => \%args,
+            options    => {},
+        }
+    );
     for my $cache_key ( keys %{ $cache_result } ) {
         my $id = $cache_key_of->{$cache_key};
-        $class->db_master->profiler->record_query("CACHE GET FOR $cache_key");
+        $db->profiler->record_query("CACHE GET FOR $cache_key");
         $result_of->{$id} = $class->data2row($cache_result->{$cache_key});
     }
 
@@ -96,7 +103,7 @@ sub fetch_multi_by_id {
         while ( my $row = $items->next ) {
             my $key = $class->cache_key($row->id);
             $cache->set($key => $row->get_columns, $cache_expire);
-            $class->db_master->profiler->record_query("CACHE SET FOR $key");
+            $db->profiler->record_query("CACHE SET FOR $key");
             $result_of->{$row->id} = $row;
         }
     }
@@ -123,10 +130,17 @@ sub fetch_multi_by_unique_key {
     }
     my $cache_result = $cache->get_multi(keys %{ $cache_key_of });
 
+    my $db = $class->get_db(
+        {
+            write      => 1,
+            conditions => \%args,
+            options    => {},
+        }
+    );
     my @not_cached_keys;
     for my $cache_key ( keys %{ $cache_key_of } ) {
         if ( $cache_result->{$cache_key} ) {
-            $class->db_master->profiler->record_query("CACHE GET FOR $cache_key");
+            $db->profiler->record_query("CACHE GET FOR $cache_key");
         } else {
             push @not_cached_keys, $cache_key_of->{$cache_key};
         }
@@ -151,11 +165,11 @@ sub fetch_multi_by_unique_key {
 
             my ($pk_cache_key, $pk_cache_expire) = $row->cache_key($row->id);
             $cache->set($pk_cache_key => $row->get_columns, $pk_cache_expire);
-            $class->db_master->profiler->record_query("CACHE SET FOR $pk_cache_key");
+            $db->profiler->record_query("CACHE SET FOR $pk_cache_key");
 
             my ($unique2pk_cache_key, $unique2pk_cache_expire ) = $class->unique2pk_cache_key($args{column_name}, $unique_key);
             $cache->set($unique2pk_cache_key => $row->id, $unique2pk_cache_expire);
-            $class->db_master->profiler->record_query("CACHE SET FOR $unique2pk_cache_key");
+            $db->profiler->record_query("CACHE SET FOR $unique2pk_cache_key");
         }
     }
 
@@ -169,7 +183,14 @@ sub delete_cache {
 
     my $cache_key = $self->cache_key($self->id, $self->table_name);
     $cache->delete($cache_key);
-    $self->db_master->profiler->record_query("CACHE DELETE FOR $cache_key");
+    my $db = $class->get_db(
+        {
+            write      => 1,
+            conditions => {},
+            options    => {},
+        }
+    );
+    $db->profiler->record_query("CACHE DELETE FOR $cache_key");
 }
 
 sub search_with_cache {
