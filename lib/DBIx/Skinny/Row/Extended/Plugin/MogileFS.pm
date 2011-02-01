@@ -24,7 +24,7 @@ sub import {
     }
 }
 
-sub mogile { shift->app_container->get('mogile') }
+sub mogile { die 'Please override mogile!' }
 
 sub mogile_key {
     my $self = shift;
