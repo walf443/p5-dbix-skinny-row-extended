@@ -10,12 +10,13 @@ sub import {
 
     {
         no strict 'refs'; ## no critic
-        *{"${pkg}::fetch_multi_by_id"} = \&fetch_multi_by_id;
+        *{"${pkg}::fetch_multi_by_id"}         = \&fetch_multi_by_id;
         *{"${pkg}::fetch_multi_by_unique_key"} = \&fetch_multi_by_unique_key;
-        *{"${pkg}::cache_key"}    = \&cache_key;
-        *{"${pkg}::unique2pk_cache_key"}    = \&unique2pk_cache_key;
-        *{"${pkg}::delete_cache"}    = \&delete_cache;
-        *{"${pkg}::search_with_cache"}    = \&search_with_cache;
+        *{"${pkg}::cache_key"}                 = \&cache_key;
+        *{"${pkg}::cache"}                     = \&cache;
+        *{"${pkg}::unique2pk_cache_key"}       = \&unique2pk_cache_key;
+        *{"${pkg}::delete_cache"}              = \&delete_cache;
+        *{"${pkg}::search_with_cache"}         = \&search_with_cache;
     }
     if ( $pkg->can('add_trigger') ) {
         $pkg->add_trigger(AFTER_UPDATE => sub {
@@ -28,6 +29,8 @@ sub import {
         });
     }
 }
+
+sub cache { shift->app_container->get('cache') }
 
 # データを1つ格納するときのキャッシュキー
 sub cache_key {
@@ -64,7 +67,7 @@ sub fetch_multi_by_id {
         id => { type => Params::Validate::ARRAYREF },
     });
 
-    my $cache = $class->app_container->get('cache');
+    my $cache = $class->cache;
     my $table_name = $class->table_name;
     my (undef, $cache_expire ) = $class->cache_key('');
 
@@ -77,7 +80,7 @@ sub fetch_multi_by_id {
     my $cache_result = $cache->get_multi(keys %{ $cache_key_of });
     for my $cache_key ( keys %{ $cache_result } ) {
         my $id = $cache_key_of->{$cache_key};
-        $class->app_container->get('db_master')->profiler->record_query("CACHE GET FOR $cache_key");
+        $class->db_master->profiler->record_query("CACHE GET FOR $cache_key");
         $result_of->{$id} = $class->data2row($cache_result->{$cache_key});
     }
 
@@ -93,7 +96,7 @@ sub fetch_multi_by_id {
         while ( my $row = $items->next ) {
             my $key = $class->cache_key($row->id);
             $cache->set($key => $row->get_columns, $cache_expire);
-            $class->app_container->get('db_master')->profiler->record_query("CACHE SET FOR $key");
+            $class->db_master->profiler->record_query("CACHE SET FOR $key");
             $result_of->{$row->id} = $row;
         }
     }
@@ -112,8 +115,8 @@ sub fetch_multi_by_unique_key {
     });
 
     my $cache_key_of = {};
-    my $cache_key_manager = $class->app_container->get('cache_key');
-    my $cache = $class->app_container->get('cache');
+    my $cache_key_manager = $class->cache_key;
+    my $cache = $class->cache;
     for my $key ( @{ $args{keys} } ) {
         my ($cache_key, ) = $class->unique2pk_cache_key($args{column_name}, $key);
         $cache_key_of->{$cache_key} = $key;
@@ -123,7 +126,7 @@ sub fetch_multi_by_unique_key {
     my @not_cached_keys;
     for my $cache_key ( keys %{ $cache_key_of } ) {
         if ( $cache_result->{$cache_key} ) {
-            $class->app_container->get('db_master')->profiler->record_query("CACHE GET FOR $cache_key");
+            $class->db_master->profiler->record_query("CACHE GET FOR $cache_key");
         } else {
             push @not_cached_keys, $cache_key_of->{$cache_key};
         }
@@ -148,11 +151,11 @@ sub fetch_multi_by_unique_key {
 
             my ($pk_cache_key, $pk_cache_expire) = $row->cache_key($row->id);
             $cache->set($pk_cache_key => $row->get_columns, $pk_cache_expire);
-            $class->app_container->get('db_master')->profiler->record_query("CACHE SET FOR $pk_cache_key");
+            $class->db_master->profiler->record_query("CACHE SET FOR $pk_cache_key");
 
             my ($unique2pk_cache_key, $unique2pk_cache_expire ) = $class->unique2pk_cache_key($args{column_name}, $unique_key);
             $cache->set($unique2pk_cache_key => $row->id, $unique2pk_cache_expire);
-            $class->app_container->get('db_master')->profiler->record_query("CACHE SET FOR $unique2pk_cache_key");
+            $class->db_master->profiler->record_query("CACHE SET FOR $unique2pk_cache_key");
         }
     }
 
@@ -161,12 +164,12 @@ sub fetch_multi_by_unique_key {
 
 sub delete_cache {
     my ($self, ) = @_;
-    my $cache_key_manager = $self->app_container->get('cache_key');
-    my $cache = $self->app_container->get('cache');
+    my $cache_key_manager = $self->cache_key;
+    my $cache = $self->cache;
 
     my $cache_key = $self->cache_key($self->id, $self->table_name);
     $cache->delete($cache_key);
-    $self->app_container->get('db_master')->profiler->record_query("CACHE DELETE FOR $cache_key");
+    $self->db_master->profiler->record_query("CACHE DELETE FOR $cache_key");
 }
 
 sub search_with_cache {

@@ -8,10 +8,11 @@ sub import {
     # TODO: import時に必要なcontainerがチェックしてくれる仕組みがあるとよいのかなぁ...
     {
         no strict 'refs'; ## no critic
-        *{"${pkg}::mogile_key"} = \&mogile_key;
-        *{"${pkg}::mogile_list_keys"} = \&mogile_list_keys;
-        *{"${pkg}::upload"} = \&upload;
-        *{"${pkg}::delete_mogile"} = \&delete_mogile;
+        *{"${pkg}::mogile"}                = \&mogile;
+        *{"${pkg}::mogile_key"}            = \&mogile_key;
+        *{"${pkg}::mogile_list_keys"}      = \&mogile_list_keys;
+        *{"${pkg}::upload"}                = \&upload;
+        *{"${pkg}::delete_mogile"}         = \&delete_mogile;
         *{"${pkg}::delete_mogile_related"} = \&delete_mogile_related;
     }
 
@@ -23,6 +24,8 @@ sub import {
     }
 }
 
+sub mogile { shift->app_container->get('mogile') }
+
 sub mogile_key {
     my $self = shift;
 
@@ -32,7 +35,7 @@ sub mogile_key {
 
 sub mogile_list_keys {
     my $self = shift;
-    return $self->app_container->get('mogile')->list_keys($self->mogile_key);
+    return $self->mogile->list_keys($self->mogile_key);
 }
 
 # データを登録しつつ、MogileFSにデータ保存する
@@ -41,18 +44,18 @@ sub upload {
     my ($class, $path, $args) = @_;
 
     my $photo;
-    my $txn = $class->app_container->get('db_master')->txn_scope;
+    my $txn = $class->db_master->txn_scope;
     {
-        $photo = $class->app_container->get('db_master')->insert($class->table_name => $args);
+        $photo = $class->db_master->insert($class->table_name => $args);
 
         my $key = $photo->mogile_key;
         if ( ref $path && ref $path eq "SCALAR" ) {
-            $class->app_container->get('mogile')->store_content($key, 'normal', $path)
-                or die $class->app_container->get('mogile')->errstr;
+            $class->mogile->store_content($key, 'normal', $path)
+                or die $class->mogile->errstr;
 
         } else {
-            $class->app_container->get('mogile')->store_file($key, 'normal', $path)
-                or die $class->app_container->get('mogile')->errstr;
+            $class->mogile->store_file($key, 'normal', $path)
+                or die $class->mogile->errstr;
 
         }
         $photo->call_trigger('AFTER_UPLOAD', $path);
@@ -65,8 +68,8 @@ sub upload {
 sub delete_mogile {
     my ($self, ) = @_;
 
-    $self->app_container->get('mogile')->delete($self->mogile_key)
-        or die $self->app_container->get('mogile')->errstr;
+    $self->mogile->delete($self->mogile_key)
+        or die $self->mogile->errstr;
 
 }
 
@@ -76,8 +79,8 @@ sub delete_mogile_related {
 
     my $keys = $self->mogile_list_keys;
     for my $key ( @{ $keys } ) {
-        $self->app_container->get('mogile')->delete($key)
-            or die $self->app_container->get('mogile')->errstr;
+        $self->mogile->delete($key)
+            or die $self->mogile->errstr;
 
     }
 }
