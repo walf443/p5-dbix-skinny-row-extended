@@ -32,12 +32,24 @@ sub base_namespace {
 
 sub default_pager_logic { 'PlusOne' }
 
-sub app_container { die 'Please override app_container or (db_master and db_slave)' }
-sub db_master { shift->app_container->get('db_master') }
-sub db_slave  { shift->app_container->get('db_slave') }
+sub db_master { die 'Please override db_master!' }
+sub db_slave  { die 'Please override db_slave!' }
+
+#パラメーターを見てMasterかSlaveか判断するメソッド。Shardingする時などにオーバーライドするとよさげです。
+sub get_db {
+    my ( $self, $args ) = @_;
+    $args ||= {};
+    if ( $args->{write} ) {
+        return $self->db_master;
+    } else {
+        return $self->db_slave;
+    }
+}
 
 sub _search {
     my ($class, $cond, $opt) = @_;
+
+    $opt ||= {};
 
     unless ( $opt->{no_pager} ) {
         $opt->{page} ||= 1;
@@ -56,11 +68,18 @@ sub _search {
         $params = $cond;
     }
 
+    my $db = $class->get_db(
+        {
+            write      => defined $opt->{write} ? $opt->{write} : 0,
+            conditions => $cond,
+            options    => $opt,
+        }
+    );
     if ( $opt->{no_pager} ) {
-        $iter = $class->db_slave->search($class->table_name => $params, $opt);
+        $iter = $db->search($class->table_name => $params, $opt);
     } else {
         $opt->{pager_logic} ||= $class->default_pager_logic;
-        ($iter, $pager) = $class->db_slave->search_with_pager($class->table_name => $params, $opt);
+        ($iter, $pager) = $db->search_with_pager($class->table_name => $params, $opt);
     }
 
     return wantarray ? ( $iter, $pager ) : $iter;
@@ -127,7 +146,13 @@ sub search {
 sub count {
     my ($class, $column, $where) = @_;
     $column ||= 'id';
-    $class->db_slave->count($class->table_name, $column, $where);
+    return $class->get_db(
+        {
+            write      => 0,
+            conditions => $where,
+            options    => {},
+        }
+    )->count($class->table_name, $column, $where);
 }
 
 sub single {
@@ -140,7 +165,13 @@ sub data2itr {
     my ($class, $args) = @_;
 
     # FIXME: db_masterにすべきか、db_slaveにすべきか
-    return $class->db_master->data2itr($class->table_name, $args);
+    return $class->get_db(
+        {
+            write      => 1,
+            conditions => {},
+            options    => {},
+        }
+    )->data2itr($class->table_name, $args);
 }
 
 # singleのかわりに
@@ -211,7 +242,13 @@ sub call_trigger {
 sub insert {
     my $self = shift;
     $self->call_trigger('BEFORE_INSERT');
-    my $result = $self->db_master->find_or_create($self->{opt_table_info}, $self->get_columns);
+    my $result = $self->get_db(
+        {
+            write      => 1,
+            conditions => $self->get_columns,
+            options    => {},
+        }
+    )->find_or_create($self->{opt_table_info}, $self->get_columns);
     $self->call_trigger('AFTER_INSERT');
     return $result;
 }
@@ -221,10 +258,17 @@ sub update {
     $table ||= $self->{opt_table_info};
     $args ||= $self->get_dirty_columns;
     my $where = $self->_update_or_delete_cond($table);
-    my $txn = $self->db_master->txn_scope;
+    my $db = $self->get_db(
+        {
+            write      => 1,
+            conditions => $where,
+            options    => {},
+        }
+    );
+    my $txn = $db->txn_scope;
 
     $self->call_trigger('BEFORE_UPDATE', $args);
-    my $result = $self->db_master->update($table, $args, $where);
+    my $result = $db->update($table, $args, $where);
     $self->set($args);
     $self->call_trigger('AFTER_UPDATE', $args);
 
@@ -237,10 +281,17 @@ sub delete {
     my ($self, $table) = @_;
     $table ||= $self->{opt_table_info};
     my $where = $self->_update_or_delete_cond($table);
-    my $txn = $self->db_master->txn_scope;
+    my $db = $self->get_db(
+        {
+            write      => 1,
+            conditions => $where,
+            options    => {},
+        }
+    );
+    my $txn = $db->txn_scope;
 
     $self->call_trigger('BEFORE_DELETE');
-    my $result = $self->db_master->delete($table, $where);
+    my $result = $db->delete($table, $where);
     $self->call_trigger('AFTER_DELETE');
     
     $txn->commit;
