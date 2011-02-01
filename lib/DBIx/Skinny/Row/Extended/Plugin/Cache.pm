@@ -13,7 +13,6 @@ sub import {
         *{"${pkg}::fetch_multi_by_id"}         = \&fetch_multi_by_id;
         *{"${pkg}::fetch_multi_by_unique_key"} = \&fetch_multi_by_unique_key;
         *{"${pkg}::cache_key"}                 = \&cache_key;
-        *{"${pkg}::cache"}                     = \&cache;
         *{"${pkg}::unique2pk_cache_key"}       = \&unique2pk_cache_key;
         *{"${pkg}::delete_cache"}              = \&delete_cache;
         *{"${pkg}::search_with_cache"}         = \&search_with_cache;
@@ -29,8 +28,6 @@ sub import {
         });
     }
 }
-
-sub cache { die 'Please override cache!' }
 
 # データを1つ格納するときのキャッシュキー
 sub cache_key {
