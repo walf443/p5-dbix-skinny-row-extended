@@ -30,7 +30,7 @@ sub import {
     }
 }
 
-sub cache { shift->app_container->get('cache') }
+sub cache { die 'Pleas override cache!' }
 
 # データを1つ格納するときのキャッシュキー
 sub cache_key {
