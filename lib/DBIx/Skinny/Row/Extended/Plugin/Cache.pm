@@ -183,7 +183,7 @@ sub delete_cache {
 
     my $cache_key = $self->cache_key($self->id, $self->table_name);
     $cache->delete($cache_key);
-    my $db = $class->get_db(
+    my $db = $self->get_db(
         {
             write      => 1,
             conditions => {},
