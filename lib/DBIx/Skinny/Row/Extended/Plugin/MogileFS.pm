@@ -44,9 +44,16 @@ sub upload {
     my ($class, $path, $args) = @_;
 
     my $photo;
-    my $txn = $class->db_master->txn_scope;
+    my $db = $class->get_db(
+        {
+            write      => 1,
+            conditions => $args,
+            options    => {},
+        }
+    );
+    my $txn = $db->txn_scope;
     {
-        $photo = $class->db_master->insert($class->table_name => $args);
+        $photo = $db->insert($class->table_name => $args);
 
         my $key = $photo->mogile_key;
         if ( ref $path && ref $path eq "SCALAR" ) {
