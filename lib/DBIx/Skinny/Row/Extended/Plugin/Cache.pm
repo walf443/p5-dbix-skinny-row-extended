@@ -30,7 +30,7 @@ sub import {
     }
 }
 
-sub cache { die 'Pleas override cache!' }
+sub cache { die 'Please override cache!' }
 
 # データを1つ格納するときのキャッシュキー
 sub cache_key {
