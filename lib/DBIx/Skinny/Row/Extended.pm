@@ -32,6 +32,10 @@ sub base_namespace {
 
 sub default_pager_logic { 'PlusOne' }
 
+sub app_container { die 'Please override app_container or (db_master and db_slave)' }
+sub db_master { shift->app_container->get('db_master') }
+sub db_slave  { shift->app_container->get('db_slave') }
+
 sub _search {
     my ($class, $cond, $opt) = @_;
 
@@ -53,10 +57,10 @@ sub _search {
     }
 
     if ( $opt->{no_pager} ) {
-        $iter = $class->app_container->get('db_slave')->search($class->table_name => $params, $opt);
+        $iter = $class->db_slave->search($class->table_name => $params, $opt);
     } else {
         $opt->{pager_logic} ||= $class->default_pager_logic;
-        ($iter, $pager) = $class->app_container->get('db_slave')->search_with_pager($class->table_name => $params, $opt);
+        ($iter, $pager) = $class->db_slave->search_with_pager($class->table_name => $params, $opt);
     }
 
     return wantarray ? ( $iter, $pager ) : $iter;
@@ -123,7 +127,7 @@ sub search {
 sub count {
     my ($class, $column, $where) = @_;
     $column ||= 'id';
-    $class->app_container->get('db_slave')->count($class->table_name, $column, $where);
+    $class->db_slave->count($class->table_name, $column, $where);
 }
 
 sub single {
@@ -136,7 +140,7 @@ sub data2itr {
     my ($class, $args) = @_;
 
     # FIXME: db_masterにすべきか、db_slaveにすべきか
-    return $class->app_container->get('db_master')->data2itr($class->table_name, $args);
+    return $class->db_master->data2itr($class->table_name, $args);
 }
 
 # singleのかわりに
@@ -207,7 +211,7 @@ sub call_trigger {
 sub insert {
     my $self = shift;
     $self->call_trigger('BEFORE_INSERT');
-    my $result = $self->app_container->get('db_master')->find_or_create($self->{opt_table_info}, $self->get_columns);
+    my $result = $self->db_master->find_or_create($self->{opt_table_info}, $self->get_columns);
     $self->call_trigger('AFTER_INSERT');
     return $result;
 }
@@ -217,10 +221,10 @@ sub update {
     $table ||= $self->{opt_table_info};
     $args ||= $self->get_dirty_columns;
     my $where = $self->_update_or_delete_cond($table);
-    my $txn = $self->app_container->get('db_master')->txn_scope;
+    my $txn = $self->db_master->txn_scope;
 
     $self->call_trigger('BEFORE_UPDATE', $args);
-    my $result = $self->app_container->get('db_master')->update($table, $args, $where);
+    my $result = $self->db_master->update($table, $args, $where);
     $self->set($args);
     $self->call_trigger('AFTER_UPDATE', $args);
 
@@ -233,10 +237,10 @@ sub delete {
     my ($self, $table) = @_;
     $table ||= $self->{opt_table_info};
     my $where = $self->_update_or_delete_cond($table);
-    my $txn = $self->app_container->get('db_master')->txn_scope;
+    my $txn = $self->db_master->txn_scope;
 
     $self->call_trigger('BEFORE_DELETE');
-    my $result = $self->app_container->get('db_master')->delete($table, $where);
+    my $result = $self->db_master->delete($table, $where);
     $self->call_trigger('AFTER_DELETE');
     
     $txn->commit;
