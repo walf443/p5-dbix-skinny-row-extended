@@ -1,3 +1,9 @@
+libdbix-skinny-row-extended-perl (0.001-3) unstable; urgency=low
+
+  * fixed warnings. 
+
+ -- Yoshimi <walf443@gmail.com>  Wed,  2 Feb 2011 13:57:55 +0900
+
 libdbix-skinny-row-extended-perl (0.001-2) unstable; urgency=low
 
   * app_container依存のコードを除去
