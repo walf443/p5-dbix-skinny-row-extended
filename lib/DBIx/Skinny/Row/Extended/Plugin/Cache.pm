@@ -121,7 +121,6 @@ sub fetch_multi_by_unique_key {
     });
 
     my $cache_key_of = {};
-    my $cache_key_manager = $class->cache_key;
     my $cache = $class->cache;
     for my $key ( @{ $args{keys} } ) {
         my ($cache_key, ) = $class->unique2pk_cache_key($args{column_name}, $key);
@@ -175,7 +174,6 @@ sub fetch_multi_by_unique_key {
 
 sub delete_cache {
     my ($self, ) = @_;
-    my $cache_key_manager = $self->cache_key;
     my $cache = $self->cache;
 
     my $cache_key = $self->cache_key($self->id, $self->table_name);
