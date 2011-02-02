@@ -55,7 +55,7 @@ sub db_slave  { die 'Please override db_slave!' }
 sub get_db {
     my $self = shift;
 
-    %args = @_;
+    my %args = @_;
     for my $need_option ( qw/ for_update condition options / ) {
         if ( ! defined $args{$need_option} ) {
             Carp::croak("$need_option is need !!");
