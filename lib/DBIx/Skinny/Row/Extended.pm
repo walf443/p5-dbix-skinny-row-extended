@@ -165,6 +165,11 @@ sub search {
 
 sub count {
     my ($class, $column, $where) = @_;
+
+    if ( ref $class ) {
+        return $class->get_column('count');
+    }
+
     $column ||= 'id';
     return $class->get_db(
         {
