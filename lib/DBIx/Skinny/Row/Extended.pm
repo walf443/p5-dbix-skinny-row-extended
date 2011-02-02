@@ -44,11 +44,20 @@ sub default_pager_logic { 'PlusOne' }
 sub db_master { die 'Please override db_master!' }
 sub db_slave  { die 'Please override db_slave!' }
 
-#パラメーターを見てMasterかSlaveか判断するメソッド。Shardingする時などにオーバーライドするとよさげです。
+# Skinnyオブジェクトを決定するロジックをもとめるメソッド
+#
+# Shardingとかしたいときはオーバーライドしてください
 sub get_db {
-    my ( $self, $args ) = @_;
+    my $self = shift;
+    $self->get_db_logic_master_slave(@_);
+
+}
+
+sub get_db_logic_master_slave {
+    my ($self, $args) = @_;
+
     $args ||= {};
-    if ( $args->{write} ) {
+    if ( defined $args->{for_update} ) {
         return $self->db_master;
     } else {
         return $self->db_slave;
@@ -79,7 +88,7 @@ sub _search {
 
     my $db = $class->get_db(
         {
-            write      => defined $opt->{write} ? $opt->{write} : 0,
+            for_update => defined $opt->{for_update} ? $opt->{for_update} : 0,
             conditions => $cond,
             options    => $opt,
         }
@@ -157,7 +166,7 @@ sub count {
     $column ||= 'id';
     return $class->get_db(
         {
-            write      => 0,
+            for_update => 0,
             conditions => $where,
             options    => {},
         }
@@ -176,7 +185,7 @@ sub data2itr {
     # FIXME: db_masterにすべきか、db_slaveにすべきか
     return $class->get_db(
         {
-            write      => 1,
+            for_update  => 1,
             conditions => {},
             options    => {},
         }
@@ -253,7 +262,7 @@ sub insert {
     $self->call_trigger('BEFORE_INSERT');
     my $result = $self->get_db(
         {
-            write      => 1,
+            for_update  => 1,
             conditions => $self->get_columns,
             options    => {},
         }
@@ -269,7 +278,7 @@ sub update {
     my $where = $self->_update_or_delete_cond($table);
     my $db = $self->get_db(
         {
-            write      => 1,
+            for_update  => 1,
             conditions => $where,
             options    => {},
         }
@@ -292,7 +301,7 @@ sub delete {
     my $where = $self->_update_or_delete_cond($table);
     my $db = $self->get_db(
         {
-            write      => 1,
+            for_update  => 1,
             conditions => $where,
             options    => {},
         }
