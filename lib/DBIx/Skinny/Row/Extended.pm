@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use base qw(DBIx::Skinny::Row Class::Data::Inheritable);
 use String::CamelCase;
+use Carp qw();
 
 __PACKAGE__->mk_classdata('triggers');
 
@@ -47,17 +48,29 @@ sub db_slave  { die 'Please override db_slave!' }
 # Skinnyオブジェクトを決定するロジックをもとめるメソッド
 #
 # Shardingとかしたいときはオーバーライドしてください
+# 呼びだす際には以下の情報を渡すこと
+#   for_update: 書き込み権限が必要かどうか
+#   condition: SQLのwhere句
+#   options: 今後拡張されるおそれがあります
 sub get_db {
     my $self = shift;
-    $self->get_db_logic_master_slave(@_);
+
+    %args = @_;
+    for my $need_option ( qw/ for_update condition options / ) {
+        if ( ! defined $args{$need_option} ) {
+            Carp::croak("$need_option is need !!");
+        }
+    }
+
+    $self->get_db_logic_master_slave(%args);
 
 }
 
 sub get_db_logic_master_slave {
-    my ($self, $args) = @_;
+    my ($self, %args) = @_;
 
     $args ||= {};
-    if ( defined $args->{for_update} ) {
+    if ( defined $args{for_update} ) {
         return $self->db_master;
     } else {
         return $self->db_slave;
@@ -89,11 +102,9 @@ sub _search {
     }
 
     my $db = $class->get_db(
-        {
-            for_update => defined $opt->{for_update} ? $opt->{for_update} : 0,
-            conditions => $cond,
-            options    => $opt,
-        }
+        for_update => defined $opt->{for_update} ? $opt->{for_update} : 0,
+        conditions => $cond,
+        options    => $opt,
     );
     if ( $opt->{no_pager} ) {
         $iter = $db->search($class->table_name => $params, $opt);
@@ -172,11 +183,9 @@ sub count {
 
     $column ||= 'id';
     return $class->get_db(
-        {
-            for_update => 0,
-            conditions => $where,
-            options    => {},
-        }
+        for_update => 0,
+        conditions => $where,
+        options    => {},
     )->count($class->table_name, $column, $where);
 }
 
@@ -191,11 +200,9 @@ sub data2itr {
 
     # FIXME: db_masterにすべきか、db_slaveにすべきか
     return $class->get_db(
-        {
-            for_update  => 1,
-            conditions => {},
-            options    => {},
-        }
+        for_update  => 1,
+        conditions => {},
+        options    => {},
     )->data2itr($class->table_name, $args);
 }
 
@@ -268,11 +275,9 @@ sub insert {
     my $self = shift;
     my @args = @_;
     my $db= $self->get_db(
-        {
-            for_update  => 1,
-            conditions => $self->get_columns,
-            options    => {},
-        }
+        for_update  => 1,
+        conditions => $self->get_columns,
+        options    => {},
     );
     if ( ref $self ) {
         # 基本的にはget_db以外はDBIx::Skinny::Row#insertからのコピペ
@@ -292,11 +297,9 @@ sub update {
     $args ||= $self->get_dirty_columns;
     my $where = $self->_update_or_delete_cond($table);
     my $db = $self->get_db(
-        {
-            for_update  => 1,
-            conditions => $where,
-            options    => {},
-        }
+        for_update  => 1,
+        conditions => $where,
+        options    => {},
     );
     my $txn = $db->txn_scope;
 
@@ -315,11 +318,9 @@ sub delete {
     $table ||= $self->{opt_table_info};
     my $where = $self->_update_or_delete_cond($table);
     my $db = $self->get_db(
-        {
-            for_update  => 1,
-            conditions => $where,
-            options    => {},
-        }
+        for_update  => 1,
+        conditions => $where,
+        options    => {},
     );
     my $txn = $db->txn_scope;
 
