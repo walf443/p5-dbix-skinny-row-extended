@@ -8,6 +8,21 @@ __PACKAGE__->mk_classdata('triggers');
 
 sub table_name {
     my ($class, ) = @_;
+
+    my $result = $class->_table_name;
+    # 一度求めることができた場合は固定であるケースが多いので再定義してしまう
+    {
+        no strict 'refs'; ## no critic;
+        no warnings 'redefine';
+        *{"$class\::table_name"} = sub { $result };
+    };
+
+    return $result;
+}
+
+# for overridable.
+sub _table_name {
+    my ($class, ) = @_;
     if ( ref $class ) {
         $class = ref $class;
     }
@@ -16,12 +31,6 @@ sub table_name {
         my $klass = $1;
         $klass =~ s/::.+$//; # Proj::DB::Row::User::Activeとかのため
         my $result = String::CamelCase::decamelize($1);
-        {
-            # 一度求めてしまえば後は固定にできるので再定義してしまう
-            no strict 'refs'; ## no critic;
-            no warnings 'redefine';
-            *{"$class\::table_name"} = sub { $result };
-        }
         return $result;
     }
 }
