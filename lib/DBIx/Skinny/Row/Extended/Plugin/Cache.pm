@@ -76,11 +76,9 @@ sub fetch_multi_by_id {
     }
     my $cache_result = $cache->get_multi(keys %{ $cache_key_of });
     my $db = $class->get_db(
-        {
-            write      => 1,
-            conditions => \%args,
-            options    => {},
-        }
+        for_update => 1,
+        conditions => \%args,
+        options    => {},
     );
     for my $cache_key ( keys %{ $cache_result } ) {
         my $id = $cache_key_of->{$cache_key};
@@ -128,11 +126,9 @@ sub fetch_multi_by_unique_key {
     my $cache_result = $cache->get_multi(keys %{ $cache_key_of });
 
     my $db = $class->get_db(
-        {
-            write      => 1,
-            conditions => \%args,
-            options    => {},
-        }
+        for_update  => 1,
+        conditions => \%args,
+        options    => {},
     );
     my @not_cached_keys;
     for my $cache_key ( keys %{ $cache_key_of } ) {
@@ -181,11 +177,9 @@ sub delete_cache {
     my $cache_key = $self->cache_key($self->id, $self->table_name);
     $cache->delete($cache_key);
     my $db = $self->get_db(
-        {
-            write      => 1,
-            conditions => {},
-            options    => {},
-        }
+        for_update  => 1,
+        conditions => {},
+        options    => {},
     );
     $db->profiler->record_query("CACHE DELETE FOR $cache_key");
 }

@@ -3,10 +3,26 @@ use strict;
 use warnings;
 use base qw(DBIx::Skinny::Row Class::Data::Inheritable);
 use String::CamelCase;
+use Carp qw();
 
 __PACKAGE__->mk_classdata('triggers');
 
 sub table_name {
+    my ($class, ) = @_;
+
+    my $result = $class->_table_name;
+    # 一度求めることができた場合は固定であるケースが多いので再定義してしまう
+    {
+        no strict 'refs'; ## no critic;
+        no warnings 'redefine';
+        *{"$class\::table_name"} = sub { $result };
+    };
+
+    return $result;
+}
+
+# for overridable.
+sub _table_name {
     my ($class, ) = @_;
     if ( ref $class ) {
         $class = ref $class;
@@ -16,12 +32,6 @@ sub table_name {
         my $klass = $1;
         $klass =~ s/::.+$//; # Proj::DB::Row::User::Activeとかのため
         my $result = String::CamelCase::decamelize($1);
-        {
-            # 一度求めてしまえば後は固定にできるので再定義してしまう
-            no strict 'refs'; ## no critic;
-            no warnings 'redefine';
-            *{"$class\::table_name"} = sub { $result };
-        }
         return $result;
     }
 }
@@ -35,16 +45,39 @@ sub default_pager_logic { 'PlusOne' }
 sub db_master { die 'Please override db_master!' }
 sub db_slave  { die 'Please override db_slave!' }
 
-#パラメーターを見てMasterかSlaveか判断するメソッド。Shardingする時などにオーバーライドするとよさげです。
+# Skinnyオブジェクトを決定するロジックをもとめるメソッド
+#
+# Shardingとかしたいときはオーバーライドしてください
+# 呼びだす際には以下の情報を渡すこと
+#   for_update: 書き込み権限が必要かどうか
+#   condition: SQLのwhere句
+#   options: 今後拡張されるおそれがあります
 sub get_db {
-    my ( $self, $args ) = @_;
+    my $self = shift;
+
+    %args = @_;
+    for my $need_option ( qw/ for_update condition options / ) {
+        if ( ! defined $args{$need_option} ) {
+            Carp::croak("$need_option is need !!");
+        }
+    }
+
+    $self->get_db_logic_master_slave(%args);
+
+}
+
+sub get_db_logic_master_slave {
+    my ($self, %args) = @_;
+
     $args ||= {};
-    if ( $args->{write} ) {
+    if ( defined $args{for_update} ) {
         return $self->db_master;
     } else {
         return $self->db_slave;
     }
 }
+
+sub default_rows_per_page { 20 }
 
 sub _search {
     my ($class, $cond, $opt) = @_;
@@ -53,7 +86,7 @@ sub _search {
 
     unless ( $opt->{no_pager} ) {
         $opt->{page} ||= 1;
-        $opt->{limit} ||= 20;
+        $opt->{limit} ||= $class->default_rows_per_page;
     }
 
     my ($iter, $pager);
@@ -69,11 +102,9 @@ sub _search {
     }
 
     my $db = $class->get_db(
-        {
-            write      => defined $opt->{write} ? $opt->{write} : 0,
-            conditions => $cond,
-            options    => $opt,
-        }
+        for_update => defined $opt->{for_update} ? $opt->{for_update} : 0,
+        conditions => $cond,
+        options    => $opt,
     );
     if ( $opt->{no_pager} ) {
         $iter = $db->search($class->table_name => $params, $opt);
@@ -145,13 +176,16 @@ sub search {
 
 sub count {
     my ($class, $column, $where) = @_;
+
+    if ( ref $class ) {
+        return $class->get_column('count');
+    }
+
     $column ||= 'id';
     return $class->get_db(
-        {
-            write      => 0,
-            conditions => $where,
-            options    => {},
-        }
+        for_update => 0,
+        conditions => $where,
+        options    => {},
     )->count($class->table_name, $column, $where);
 }
 
@@ -166,11 +200,9 @@ sub data2itr {
 
     # FIXME: db_masterにすべきか、db_slaveにすべきか
     return $class->get_db(
-        {
-            write      => 1,
-            conditions => {},
-            options    => {},
-        }
+        for_update  => 1,
+        conditions => {},
+        options    => {},
     )->data2itr($class->table_name, $args);
 }
 
@@ -241,16 +273,22 @@ sub call_trigger {
 
 sub insert {
     my $self = shift;
-    $self->call_trigger('BEFORE_INSERT');
-    my $result = $self->get_db(
-        {
-            write      => 1,
-            conditions => $self->get_columns,
-            options    => {},
-        }
-    )->find_or_create($self->{opt_table_info}, $self->get_columns);
-    $self->call_trigger('AFTER_INSERT');
-    return $result;
+    my @args = @_;
+    my $db= $self->get_db(
+        for_update  => 1,
+        conditions => $self->get_columns,
+        options    => {},
+    );
+    if ( ref $self ) {
+        # 基本的にはget_db以外はDBIx::Skinny::Row#insertからのコピペ
+        $self->call_trigger('BEFORE_INSERT');
+        my $result = $db->find_or_create($self->{opt_table_info}, $self->get_columns);
+        $self->call_trigger('AFTER_INSERT');
+        return $result;
+    } else {
+        my $class = $self;
+        $db->insert($self->table_name, @args);
+    }
 }
 
 sub update {
@@ -259,11 +297,9 @@ sub update {
     $args ||= $self->get_dirty_columns;
     my $where = $self->_update_or_delete_cond($table);
     my $db = $self->get_db(
-        {
-            write      => 1,
-            conditions => $where,
-            options    => {},
-        }
+        for_update  => 1,
+        conditions => $where,
+        options    => {},
     );
     my $txn = $db->txn_scope;
 
@@ -282,11 +318,9 @@ sub delete {
     $table ||= $self->{opt_table_info};
     my $where = $self->_update_or_delete_cond($table);
     my $db = $self->get_db(
-        {
-            write      => 1,
-            conditions => $where,
-            options    => {},
-        }
+        for_update  => 1,
+        conditions => $where,
+        options    => {},
     );
     my $txn = $db->txn_scope;
 
