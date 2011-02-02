@@ -6,6 +6,8 @@ all_from 'lib/DBIx/Skinny/Row/Extended.pm';
 readme_from 'lib/DBIx/Skinny/Row/Extended.pm';
 
 # requires '';
+requires 'DBIx::Skinny';
+requires 'DBIx::Skinny::Mixin::Pager';
 
 tests_recursive 't';
 author_tests 'xt';
