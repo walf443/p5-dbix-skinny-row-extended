@@ -5,10 +5,13 @@ use warnings;
 sub import {
     my $pkg = caller;
 
+    unless ( $pkg->can('mogile') ) {
+        die "$pkg sholud respond to mogile method!!";
+    }
+
     # TODO: import時に必要なcontainerがチェックしてくれる仕組みがあるとよいのかなぁ...
     {
         no strict 'refs'; ## no critic
-        *{"${pkg}::mogile"}                = \&mogile;
         *{"${pkg}::mogile_key"}            = \&mogile_key;
         *{"${pkg}::mogile_list_keys"}      = \&mogile_list_keys;
         *{"${pkg}::upload"}                = \&upload;
