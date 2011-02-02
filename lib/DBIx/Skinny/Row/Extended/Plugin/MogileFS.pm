@@ -8,6 +8,7 @@ sub import {
     # TODO: import時に必要なcontainerがチェックしてくれる仕組みがあるとよいのかなぁ...
     {
         no strict 'refs'; ## no critic
+        *{"${pkg}::mogile"}                = \&mogile;
         *{"${pkg}::mogile_key"}            = \&mogile_key;
         *{"${pkg}::mogile_list_keys"}      = \&mogile_list_keys;
         *{"${pkg}::upload"}                = \&upload;
@@ -22,6 +23,8 @@ sub import {
         });
     }
 }
+
+sub mogile { die 'Please override mogile!' }
 
 sub mogile_key {
     my $self = shift;
