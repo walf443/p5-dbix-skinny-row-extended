@@ -266,16 +266,24 @@ sub call_trigger {
 
 sub insert {
     my $self = shift;
-    $self->call_trigger('BEFORE_INSERT');
-    my $result = $self->get_db(
+    my @args = @_;
+    my $db= $self->get_db(
         {
             for_update  => 1,
             conditions => $self->get_columns,
             options    => {},
         }
-    )->find_or_create($self->{opt_table_info}, $self->get_columns);
-    $self->call_trigger('AFTER_INSERT');
-    return $result;
+    );
+    if ( ref $self ) {
+        # 基本的にはget_db以外はDBIx::Skinny::Row#insertからのコピペ
+        $self->call_trigger('BEFORE_INSERT');
+        my $result = $db->find_or_create($self->{opt_table_info}, $self->get_columns);
+        $self->call_trigger('AFTER_INSERT');
+        return $result;
+    } else {
+        my $class = $self;
+        $db->insert($self->table_name, @args);
+    }
 }
 
 sub update {
