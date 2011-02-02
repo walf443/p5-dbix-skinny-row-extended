@@ -50,13 +50,13 @@ sub db_slave  { die 'Please override db_slave!' }
 # Shardingとかしたいときはオーバーライドしてください
 # 呼びだす際には以下の情報を渡すこと
 #   for_update: 書き込み権限が必要かどうか
-#   condition: SQLのwhere句
+#   conditions: SQLのwhere句
 #   options: 今後拡張されるおそれがあります
 sub get_db {
     my $self = shift;
 
     my %args = @_;
-    for my $need_option ( qw/ for_update condition options / ) {
+    for my $need_option ( qw/ for_update conditions options / ) {
         if ( ! defined $args{$need_option} ) {
             Carp::croak("$need_option is need !!");
         }
