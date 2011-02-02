@@ -64,6 +64,8 @@ sub get_db_logic_master_slave {
     }
 }
 
+sub default_rows_per_page { 20 }
+
 sub _search {
     my ($class, $cond, $opt) = @_;
 
@@ -71,7 +73,7 @@ sub _search {
 
     unless ( $opt->{no_pager} ) {
         $opt->{page} ||= 1;
-        $opt->{limit} ||= 20;
+        $opt->{limit} ||= $class->default_rows_per_page;
     }
 
     my ($iter, $pager);
