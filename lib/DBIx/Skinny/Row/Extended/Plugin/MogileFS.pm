@@ -42,11 +42,9 @@ sub upload {
 
     my $photo;
     my $db = $class->get_db(
-        {
-            write      => 1,
-            conditions => $args,
-            options    => {},
-        }
+        for_update  => 1,
+        conditions => $args,
+        options    => {},
     );
     my $txn = $db->txn_scope;
     {
