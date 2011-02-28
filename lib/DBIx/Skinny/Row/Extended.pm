@@ -273,21 +273,40 @@ sub call_trigger {
 sub insert {
     my $self = shift;
     my @args = @_;
+    if ( ref $self ) {
+        return $self->_instanse_insert(@args);
+    } else {
+        return $self->_class_insert(@args);
+    }
+}
+
+sub _class_insert {
+    my ($class, @args) = @_;
+
+    my $data = $args[0];
+    my $db = $class->get_db(
+        for_update  => 1,
+        conditions => $data,
+        options    => {},
+    );
+    my $result;
+    $class->call_trigger('BEFORE_INSERT', $data);
+    $result = $db->insert($class->table_name, @args);
+    $class->call_trigger('AFTER_INSERT', $result);
+    return $result;
+}
+
+# 基本的にはget_db以外はDBIx::Skinny::Row#insertからのコピペ
+sub _instanse_insert {
+    my ($self, @args) = @_;
     my $db= $self->get_db(
         for_update  => 1,
         conditions => $self->get_columns,
         options    => {},
     );
-    if ( ref $self ) {
-        # 基本的にはget_db以外はDBIx::Skinny::Row#insertからのコピペ
-        $self->call_trigger('BEFORE_INSERT');
-        my $result = $db->find_or_create($self->{opt_table_info}, $self->get_columns);
-        $self->call_trigger('AFTER_INSERT');
-        return $result;
-    } else {
-        my $class = $self;
-        $db->insert($self->table_name, @args);
-    }
+    # 基本的には使わないかと思われるので、triggerは呼ばないよ
+    my $result = $db->find_or_create($self->{opt_table_info}, $self->get_columns);
+    return $result;
 }
 
 sub update {
