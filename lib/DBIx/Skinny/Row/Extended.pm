@@ -274,7 +274,7 @@ sub insert {
     my $self = shift;
     my @args = @_;
     if ( ref $self ) {
-        return $self->_instanse_insert(@args);
+        return $self->_instance_insert(@args);
     } else {
         return $self->_class_insert(@args);
     }
@@ -297,7 +297,7 @@ sub _class_insert {
 }
 
 # 基本的にはget_db以外はDBIx::Skinny::Row#insertからのコピペ
-sub _instanse_insert {
+sub _instance_insert {
     my ($self, @args) = @_;
     my $db= $self->get_db(
         for_update  => 1,
