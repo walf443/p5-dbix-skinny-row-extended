@@ -69,7 +69,7 @@ sub get_db {
 sub get_db_logic_master_slave {
     my ($self, %args) = @_;
 
-    if ( defined $args{for_update} ) {
+    if ( $args{for_update} ) {
         return $self->db_master;
     } else {
         return $self->db_slave;
