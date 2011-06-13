@@ -1,3 +1,9 @@
+libdbix-skinny-row-extended-perl (0.001-5) unstable; urgency=low
+
+  * get_db_logic_master_slaveでfor_update=0の時にslave見るようになった
+
+ -- Kobayashi <koba0004@gmail.com>  Mon, 13 Jun 2011 10:46:12 +0900
+
 libdbix-skinny-row-extended-perl (0.001-4) unstable; urgency=low
 
   * insertの処理を整備(クラスメソッドでも動作するように)
